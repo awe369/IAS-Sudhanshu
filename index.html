@@ -34,6 +34,14 @@
         
         .fade-in { animation: fadeIn 0.5s ease-in; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .status-badge {
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 99px;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col text-slate-900">
@@ -49,7 +57,10 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-extrabold tracking-tight text-slate-900">IAS Sudhanshu Patel</h1>
-                    <p class="text-[10px] uppercase tracking-widest font-bold text-indigo-500">Live Exam Portal</p>
+                    <div class="flex items-center gap-2">
+                        <p class="text-[10px] uppercase tracking-widest font-bold text-indigo-500">Live Exam Portal</p>
+                        <span id="connection-status" class="status-badge bg-slate-100 text-slate-400">Offline</span>
+                    </div>
                 </div>
             </div>
             <button id="admin-toggle" class="text-xs font-bold text-slate-600 hover:text-indigo-600 transition-colors uppercase tracking-widest border border-slate-200 px-4 py-2 rounded-xl bg-white shadow-sm">
@@ -64,14 +75,11 @@
         <div id="loading-state" class="flex flex-col items-center gap-6 fade-in">
             <div class="loader"></div>
             <div class="text-center">
-                <p class="text-slate-900 font-bold text-lg">Connecting to Live Server...</p>
-                <p class="text-slate-400 text-sm mt-1">Checking for active exam sessions</p>
+                <p class="text-slate-900 font-bold text-lg">Connecting to Shared Server...</p>
+                <p class="text-slate-400 text-sm mt-1">Syncing data for you and your friends</p>
             </div>
-            <div id="loading-fallback" class="mt-4 flex flex-col gap-2 items-center">
-                <p class="text-xs text-slate-400">Server slow? Skip connection to work locally.</p>
-                <button id="skip-loading-btn" class="bg-slate-200 text-slate-700 px-4 py-1.5 rounded-lg text-xs font-bold hover:bg-slate-300">
-                    Skip Connection
-                </button>
+            <div id="offline-warning" class="hidden mt-4 text-xs text-red-500 font-bold">
+                Firebase Config Missing! Please add keys in code to go Live.
             </div>
         </div>
 
@@ -79,23 +87,23 @@
         <section id="admin-view" class="hidden w-full max-w-2xl fade-in">
             <div class="bg-white rounded-[2.5rem] p-10 shadow-2xl border border-slate-100">
                 <h2 class="text-3xl font-black mb-2 text-slate-900">Host New Exam</h2>
-                <p class="text-slate-500 mb-8 text-sm">Schedule a test for you and your friends using a Google Drive link.</p>
+                <p class="text-slate-500 mb-8 text-sm">Jo details aap yahan bharenge, wo sabhi doston ke screen par Live update ho jayengi.</p>
                 
                 <div class="space-y-6">
                     <div>
                         <label class="block text-sm font-bold text-slate-700 mb-2">Paper Title</label>
-                        <input type="text" id="exam-title" placeholder="e.g. GS Paper II - CSAT" class="w-full bg-slate-50 p-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none font-medium">
+                        <input type="text" id="exam-title" placeholder="e.g. UPSC GS Paper 1" class="w-full bg-slate-50 p-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none font-medium">
                     </div>
 
                     <div>
-                        <label class="block text-sm font-bold text-slate-700 mb-2">Google Drive / PDF URL</label>
-                        <input type="text" id="exam-url" placeholder="Paste link here..." class="w-full bg-slate-50 p-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none font-medium">
-                        <p class="text-[10px] text-slate-400 mt-2">Make sure Google Drive link access is "Anyone with link".</p>
+                        <label class="block text-sm font-bold text-slate-700 mb-2">Google Drive PDF URL</label>
+                        <input type="text" id="exam-url" placeholder="Paste Drive link here..." class="w-full bg-slate-50 p-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none font-medium">
+                        <p class="text-[10px] text-slate-400 mt-2">Dhyan rakhein: Google Drive access "Anyone with link" hona chahiye.</p>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-bold text-slate-700 mb-2">Start Date & Time</label>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Start Time</label>
                             <input type="datetime-local" id="exam-start-time" class="w-full bg-slate-50 p-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none font-bold">
                         </div>
                         <div>
@@ -105,8 +113,9 @@
                     </div>
 
                     <button id="save-exam-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-5 rounded-2xl shadow-xl shadow-indigo-100 transition-all flex items-center justify-center gap-2">
-                        <span>Publish Live Exam</span>
+                        <span>Sync & Go Live</span>
                     </button>
+                    <button id="clear-exam-btn" class="w-full bg-slate-100 text-slate-400 py-3 rounded-xl font-bold text-xs hover:bg-red-50 hover:text-red-500 transition-all">Stop Live Exam for All</button>
                 </div>
             </div>
         </section>
@@ -118,9 +127,9 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
             </div>
-            <h2 class="text-4xl font-black text-slate-900 mb-4">Exam Starting Soon</h2>
+            <h2 class="text-4xl font-black text-slate-900 mb-4">Exam Coming Up!</h2>
             <p id="lobby-paper-name" class="text-indigo-600 font-bold text-xl mb-4 italic"></p>
-            <p class="text-slate-500 mb-10 text-lg">Wait karein, jaise hi timer zero hoga exam apne aap shuru ho jayega.</p>
+            <p class="text-slate-500 mb-10 text-lg">Wait karein... Sudhanshu sir ne paper schedule kar diya hai.</p>
             
             <div class="flex justify-center gap-4">
                 <div class="bg-white p-6 rounded-3xl shadow-xl border border-slate-50 min-w-[90px]">
@@ -144,7 +153,7 @@
                 <div class="flex items-center justify-between header-content bg-white p-4 rounded-2xl border border-slate-200">
                     <div class="hidden sm:block">
                         <h3 id="paper-title-display" class="font-bold text-slate-900 truncate max-w-[200px]">Exam Paper</h3>
-                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Live Portal</p>
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Live Active Portal</p>
                     </div>
                     <div class="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
                         <div class="bg-slate-900 text-emerald-400 px-5 py-2 rounded-xl font-mono font-bold text-2xl border border-slate-700 shadow-lg">
@@ -154,7 +163,7 @@
                             <button id="fs-btn" class="p-3 bg-slate-100 rounded-xl hover:bg-slate-200">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" /></svg>
                             </button>
-                            <button id="end-test-btn" class="bg-red-500 text-white px-4 py-2 rounded-xl font-bold text-sm">End</button>
+                            <button id="end-test-btn" class="bg-red-500 text-white px-4 py-2 rounded-xl font-bold text-sm">End Test</button>
                         </div>
                     </div>
                 </div>
@@ -171,9 +180,9 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
             </div>
-            <h2 class="text-3xl font-black text-slate-900 mb-2">No Active Exam</h2>
-            <p class="text-slate-500 mb-8">No live exams scheduled at the moment.</p>
-            <button onclick="location.reload()" class="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-indigo-700 transition-all">Check Again</button>
+            <h2 class="text-3xl font-black text-slate-900 mb-2">No Active Test</h2>
+            <p class="text-slate-500 mb-8">Sabhi doston ke liye portal band hai. Naya test schedule hone ka wait karein.</p>
+            <button onclick="location.reload()" class="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-indigo-700 transition-all">Refresh</button>
         </section>
 
     </main>
@@ -184,63 +193,56 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Environment Fallbacks for Local Testing
-        let firebaseConfig = {};
-        try { firebaseConfig = JSON.parse(__firebase_config); } catch (e) { console.warn("Firebase config not found. Running in local mode."); }
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-exam-id';
-
-        let app, auth, db;
-        let dbConnected = false;
-
-        // Initialize Firebase if config exists
-        if (firebaseConfig.apiKey) {
-            app = initializeApp(firebaseConfig);
-            auth = getAuth(app);
-            db = getFirestore(app);
-        }
-
-        let currentExam = null;
-        let isAdmin = false;
-        let countdownInterval = null;
-        let user = null;
-
-        const views = {
-            loading: document.getElementById('loading-state'),
-            admin: document.getElementById('admin-view'),
-            lobby: document.getElementById('lobby-view'),
-            exam: document.getElementById('exam-view'),
-            ended: document.getElementById('ended-view')
+        // --- PASTE YOUR FIREBASE CONFIG OBJECT HERE ---
+        const myFirebaseConfig = {
+            apiKey: "AIzaSyDdjErMiMUMYG4DfS75m9it_NgJkQLvyUg",
+            authDomain: "patelexamportal.firebaseapp.com",
+            projectId: "patelexamportal",
+            storageBucket: "patelexamportal.firebasestorage.app",
+            messagingSenderId: "532670965491",
+            appId: "1:532670965491:web:694a2ae477b7c0b90b3986"
         };
+        // -----------------------------------------------
 
-        function switchView(viewName) {
-            Object.values(views).forEach(v => v.classList.add('hidden'));
-            views[viewName].classList.remove('hidden');
-        }
-
-        function sanitizeDriveUrl(url) {
-            if (url.includes('drive.google.com')) {
-                const fileIdMatch = url.match(/\/d\/(.+?)\/(view|edit|usp)/);
-                if (fileIdMatch && fileIdMatch[1]) {
-                    return `https://drive.google.com/file/d/${fileIdMatch[1]}/preview`;
-                }
+        let firebaseConfig = {};
+        try { firebaseConfig = JSON.parse(__firebase_config); } catch (e) {
+            if (myFirebaseConfig.apiKey && !myFirebaseConfig.apiKey.includes("PASTE")) {
+                firebaseConfig = myFirebaseConfig;
             }
-            return url;
         }
 
-        // Auth & Sync Logic
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'patelexamportal';
+        let app, auth, db, dbConnected = false;
+
+        function setStatus(status) {
+            const badge = document.getElementById('connection-status');
+            if (status === 'live') {
+                badge.textContent = 'Live Sync';
+                badge.className = 'status-badge bg-emerald-100 text-emerald-600';
+            } else {
+                badge.textContent = 'Offline';
+                badge.className = 'status-badge bg-slate-100 text-slate-400';
+            }
+        }
+
         const startApp = async () => {
-            if (!auth || !db) {
-                // No Firebase - switch to ended view immediately so user can go to Admin
-                switchView('ended');
+            if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes("PASTE")) {
+                document.getElementById('offline-warning').classList.remove('hidden');
+                setTimeout(() => switchView('ended'), 2000);
                 return;
             }
 
             try {
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
                 await signInAnonymously(auth);
                 dbConnected = true;
+                setStatus('live');
+
                 const examDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'liveExam');
                 onSnapshot(examDocRef, (snap) => {
                     if (snap.exists()) {
@@ -252,127 +254,74 @@
                     }
                 });
             } catch (err) {
-                console.error("Connection Failed:", err);
+                console.error(err);
                 switchView('ended');
             }
         };
 
+        let currentExam = null, isAdmin = false, countdownInterval = null;
+
+        function sanitizeDriveUrl(url) {
+            if (url.includes('drive.google.com')) {
+                const fileIdMatch = url.match(/\/d\/(.+?)\/(view|edit|usp)/);
+                if (fileIdMatch && fileIdMatch[1]) return `https://drive.google.com/file/d/${fileIdMatch[1]}/preview`;
+            }
+            return url;
+        }
+
         function processExamState() {
             if (!currentExam) return;
-            const now = Date.now();
-            const startTime = currentExam.startTime;
-            const endTime = startTime + (currentExam.duration * 60 * 1000);
+            const now = Date.now(), start = currentExam.startTime, end = start + (currentExam.duration * 60 * 1000);
             clearInterval(countdownInterval);
-
-            if (now < startTime) {
-                switchView('lobby');
-                document.getElementById('lobby-paper-name').textContent = currentExam.title;
-                startLobbyCountdown(startTime);
-            } else if (now >= startTime && now < endTime) {
-                switchView('exam');
-                startActiveExam(endTime);
-            } else {
-                switchView('ended');
-            }
+            if (now < start) { switchView('lobby'); document.getElementById('lobby-paper-name').textContent = currentExam.title; startLobbyCountdown(start); }
+            else if (now >= start && now < end) { switchView('exam'); startActiveExam(end); }
+            else { switchView('ended'); }
         }
 
         function startLobbyCountdown(target) {
             const update = () => {
                 const diff = target - Date.now();
                 if (diff <= 0) { processExamState(); return; }
-                const h = Math.floor(diff / 3600000);
-                const m = Math.floor((diff % 3600000) / 60000);
-                const s = Math.floor((diff % 60000) / 1000);
+                const h = Math.floor(diff / 3600000), m = Math.floor((diff % 3600000) / 60000), s = Math.floor((diff % 60000) / 1000);
                 document.getElementById('lobby-h').textContent = h.toString().padStart(2, '0');
                 document.getElementById('lobby-m').textContent = m.toString().padStart(2, '0');
                 document.getElementById('lobby-s').textContent = s.toString().padStart(2, '0');
-            };
-            update();
-            countdownInterval = setInterval(update, 1000);
+            }; update(); countdownInterval = setInterval(update, 1000);
         }
 
         function startActiveExam(endTime) {
-            const pdfFrame = document.getElementById('pdf-frame');
-            if (pdfFrame.src !== currentExam.pdfUrl) {
-                pdfFrame.src = currentExam.pdfUrl;
-            }
+            const frame = document.getElementById('pdf-frame');
+            if (frame.src !== currentExam.pdfUrl) frame.src = currentExam.pdfUrl;
             document.getElementById('paper-title-display').textContent = currentExam.title;
-
             const update = () => {
                 const diff = endTime - Date.now();
                 if (diff <= 0) { endSession(); return; }
-                const h = Math.floor(diff / 3600000);
-                const m = Math.floor((diff % 3600000) / 60000);
-                const s = Math.floor((diff % 60000) / 1000);
-                document.getElementById('exam-timer').textContent = 
-                    `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-            };
-            update();
-            countdownInterval = setInterval(update, 1000);
+                const h = Math.floor(diff / 3600000), m = Math.floor((diff % 3600000) / 60000), s = Math.floor((diff % 60000) / 1000);
+                document.getElementById('exam-timer').textContent = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+            }; update(); countdownInterval = setInterval(update, 1000);
         }
 
-        function endSession() {
-            clearInterval(countdownInterval);
-            document.getElementById('pdf-frame').src = "";
-            switchView('ended');
-        }
+        function endSession() { clearInterval(countdownInterval); document.getElementById('pdf-frame').src = ""; switchView('ended'); }
 
-        // Navigation
         document.getElementById('admin-toggle').onclick = () => {
             isAdmin = !isAdmin;
-            document.getElementById('admin-toggle').textContent = isAdmin ? "Student Portal" : "Admin Portal";
-            if (isAdmin) switchView('admin');
-            else processExamState();
-        };
-
-        document.getElementById('skip-loading-btn').onclick = () => {
-            switchView('ended');
+            document.getElementById('admin-toggle').textContent = isAdmin ? "View Portal" : "Admin Portal";
+            if (isAdmin) switchView('admin'); else processExamState();
         };
 
         document.getElementById('save-exam-btn').onclick = async () => {
-            const title = document.getElementById('exam-title').value;
-            const rawUrl = document.getElementById('exam-url').value;
-            const startVal = document.getElementById('exam-start-time').value;
-            const duration = parseInt(document.getElementById('exam-duration').value);
-            
-            if (!title || !rawUrl || !startVal || !duration) {
-                alert("Please fill all details!"); return;
-            }
-
-            const startTime = new Date(startVal).getTime();
-            const examConfig = {
-                title: title,
-                pdfUrl: sanitizeDriveUrl(rawUrl),
-                startTime: startTime,
-                duration: duration
-            };
-
+            const title = document.getElementById('exam-title').value, url = document.getElementById('exam-url').value, start = document.getElementById('exam-start-time').value, dur = parseInt(document.getElementById('exam-duration').value);
+            if (!title || !url || !start || !dur) { alert("Sari details bharein!"); return; }
+            const config = { title, pdfUrl: sanitizeDriveUrl(url), startTime: new Date(start).getTime(), duration: dur };
             if (dbConnected) {
-                try {
-                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'liveExam'), examConfig);
-                    alert("Exam is Live!");
-                } catch (err) {
-                    alert("Sync failed, but starting locally...");
-                }
-            } else {
-                alert("Running in Local Mode (Offline).");
-            }
-            
-            currentExam = examConfig;
-            isAdmin = false;
-            document.getElementById('admin-toggle').textContent = "Admin Portal";
-            processExamState();
+                try { await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'liveExam'), config); alert("Exam Live ho gaya hai!"); isAdmin = false; processExamState(); }
+                catch (e) { alert("Error: " + e.message); }
+            } else { alert("Firebase connected nahi hai!"); }
         };
 
-        document.getElementById('end-test-btn').onclick = () => {
-            if (confirm("End test?")) endSession();
-        };
-
-        document.getElementById('fs-btn').onclick = () => {
-            const container = document.getElementById('exam-container');
-            if (!document.fullscreenElement) container.requestFullscreen();
-            else document.exitFullscreen();
-        };
+        document.getElementById('clear-exam-btn').onclick = async () => { if (confirm("Khatam kardein?")) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'liveExam')); location.reload(); };
+        document.getElementById('fs-btn').onclick = () => { const c = document.getElementById('exam-container'); if (!document.fullscreenElement) c.requestFullscreen(); else document.exitFullscreen(); };
+        document.getElementById('end-test-btn').onclick = () => { if (confirm("End attempt?")) endSession(); };
 
         startApp();
     </script>
