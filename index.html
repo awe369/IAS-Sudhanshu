@@ -76,10 +76,8 @@
             <div class="loader"></div>
             <div class="text-center">
                 <p class="text-slate-900 font-bold text-lg">Connecting to Shared Server...</p>
-                <p class="text-slate-400 text-sm mt-1">Syncing data for you and your friends</p>
-            </div>
-            <div id="offline-warning" class="hidden mt-4 text-xs text-red-500 font-bold">
-                Firebase Config Missing! Please add keys in code to go Live.
+                <p class="text-slate-400 text-sm mt-1">Checking for active exams...</p>
+                <p class="text-xs text-indigo-500 mt-4 font-semibold cursor-pointer" onclick="forceAdminView()">Taking too long? Click here to host immediately</p>
             </div>
         </div>
 
@@ -87,18 +85,17 @@
         <section id="admin-view" class="hidden w-full max-w-2xl fade-in">
             <div class="bg-white rounded-[2.5rem] p-10 shadow-2xl border border-slate-100">
                 <h2 class="text-3xl font-black mb-2 text-slate-900">Host New Exam</h2>
-                <p class="text-slate-500 mb-8 text-sm">Jo details aap yahan bharenge, wo sabhi doston ke screen par Live update ho jayengi.</p>
+                <p class="text-slate-500 mb-8 text-sm">Create a test session for all students connected to this portal.</p>
                 
                 <div class="space-y-6">
                     <div>
                         <label class="block text-sm font-bold text-slate-700 mb-2">Paper Title</label>
-                        <input type="text" id="exam-title" placeholder="e.g. UPSC GS Paper 1" class="w-full bg-slate-50 p-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none font-medium">
+                        <input type="text" id="exam-title" placeholder="e.g. UPSC Prelims Mock Test 1" class="w-full bg-slate-50 p-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none font-medium">
                     </div>
 
                     <div>
                         <label class="block text-sm font-bold text-slate-700 mb-2">Google Drive PDF URL</label>
-                        <input type="text" id="exam-url" placeholder="Paste Drive link here..." class="w-full bg-slate-50 p-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none font-medium">
-                        <p class="text-[10px] text-slate-400 mt-2">Dhyan rakhein: Google Drive access "Anyone with link" hona chahiye.</p>
+                        <input type="text" id="exam-url" placeholder="Paste Drive link (Make sure it is Public)..." class="w-full bg-slate-50 p-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none font-medium">
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -127,9 +124,9 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
             </div>
-            <h2 class="text-4xl font-black text-slate-900 mb-4">Exam Coming Up!</h2>
+            <h2 class="text-4xl font-black text-slate-900 mb-4">Exam Starting Soon</h2>
             <p id="lobby-paper-name" class="text-indigo-600 font-bold text-xl mb-4 italic"></p>
-            <p class="text-slate-500 mb-10 text-lg">Wait karein... Sudhanshu sir ne paper schedule kar diya hai.</p>
+            <p class="text-slate-500 mb-10 text-lg">Wait for timer to hit zero. The paper will open automatically.</p>
             
             <div class="flex justify-center gap-4">
                 <div class="bg-white p-6 rounded-3xl shadow-xl border border-slate-50 min-w-[90px]">
@@ -181,8 +178,8 @@
                 </svg>
             </div>
             <h2 class="text-3xl font-black text-slate-900 mb-2">No Active Test</h2>
-            <p class="text-slate-500 mb-8">Sabhi doston ke liye portal band hai. Naya test schedule hone ka wait karein.</p>
-            <button onclick="location.reload()" class="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-indigo-700 transition-all">Refresh</button>
+            <p class="text-slate-500 mb-8">Currently no live exam is scheduled. Click 'Admin Portal' above if you want to host one.</p>
+            <button onclick="location.reload()" class="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-indigo-700 transition-all">Refresh Status</button>
         </section>
 
     </main>
@@ -196,23 +193,25 @@
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- PASTE YOUR FIREBASE CONFIG OBJECT HERE ---
+        // --- APKA CONFIG ADD KAR DIYA HAI ---
         const myFirebaseConfig = {
-            apiKey: "AIzaSyDdjErMiMUMYG4DfS75m9it_NgJkQLvyUg",
-            authDomain: "patelexamportal.firebaseapp.com",
-            projectId: "patelexamportal",
-            storageBucket: "patelexamportal.firebasestorage.app",
-            messagingSenderId: "532670965491",
-            appId: "1:532670965491:web:694a2ae477b7c0b90b3986"
+          apiKey: "AIzaSyDdjErMiMUMYG4DfS75m9it_NgJkQLvyUg",
+          authDomain: "patelexamportal.firebaseapp.com",
+          projectId: "patelexamportal",
+          storageBucket: "patelexamportal.firebasestorage.app",
+          messagingSenderId: "532670965491",
+          appId: "1:532670965491:web:694a2ae477b7c0b90b3986",
+          measurementId: "G-B8JLZ293K8"
         };
         // -----------------------------------------------
 
-        let firebaseConfig = {};
-        try { firebaseConfig = JSON.parse(__firebase_config); } catch (e) {
-            if (myFirebaseConfig.apiKey && !myFirebaseConfig.apiKey.includes("PASTE")) {
-                firebaseConfig = myFirebaseConfig;
-            }
-        }
+        let firebaseConfig = myFirebaseConfig;
+        
+        // Use simulation config if available (only for development preview)
+        try { 
+            const simConfig = JSON.parse(__firebase_config);
+            if(simConfig.apiKey) firebaseConfig = simConfig;
+        } catch (e) {}
 
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'patelexamportal';
         let app, auth, db, dbConnected = false;
@@ -229,21 +228,27 @@
         }
 
         const startApp = async () => {
-            if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes("PASTE")) {
-                document.getElementById('offline-warning').classList.remove('hidden');
-                setTimeout(() => switchView('ended'), 2000);
-                return;
-            }
+            // Safety Timeout: Agar 6 second tak load na ho, to "No Exam" screen dikha do
+            setTimeout(() => {
+                const loading = document.getElementById('loading-state');
+                if (!loading.classList.contains('hidden')) {
+                    console.log("Forcing load complete due to timeout.");
+                    if(!isAdmin) switchView('ended');
+                }
+            }, 6000);
 
             try {
                 app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
                 db = getFirestore(app);
+                
                 await signInAnonymously(auth);
                 dbConnected = true;
                 setStatus('live');
 
                 const examDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'liveExam');
+                
+                // Add error callback to onSnapshot
                 onSnapshot(examDocRef, (snap) => {
                     if (snap.exists()) {
                         currentExam = snap.data();
@@ -252,14 +257,38 @@
                         currentExam = null;
                         if (!isAdmin) switchView('ended');
                     }
+                }, (error) => {
+                    console.error("Data fetch error:", error);
+                    if (!isAdmin) switchView('ended');
                 });
+
             } catch (err) {
-                console.error(err);
+                console.error("Firebase Init Error:", err);
                 switchView('ended');
             }
         };
 
         let currentExam = null, isAdmin = false, countdownInterval = null;
+
+        const views = {
+            loading: document.getElementById('loading-state'),
+            admin: document.getElementById('admin-view'),
+            lobby: document.getElementById('lobby-view'),
+            exam: document.getElementById('exam-view'),
+            ended: document.getElementById('ended-view')
+        };
+
+        function switchView(viewName) {
+            Object.values(views).forEach(v => v.classList.add('hidden'));
+            views[viewName].classList.remove('hidden');
+        }
+        
+        // Expose function for the manual link in loading screen
+        window.forceAdminView = () => {
+            isAdmin = true;
+            document.getElementById('admin-toggle').textContent = "View Portal";
+            switchView('admin');
+        };
 
         function sanitizeDriveUrl(url) {
             if (url.includes('drive.google.com')) {
@@ -306,7 +335,11 @@
         document.getElementById('admin-toggle').onclick = () => {
             isAdmin = !isAdmin;
             document.getElementById('admin-toggle').textContent = isAdmin ? "View Portal" : "Admin Portal";
-            if (isAdmin) switchView('admin'); else processExamState();
+            if (isAdmin) switchView('admin'); else {
+                 // Check state again if leaving admin
+                 if(currentExam) processExamState();
+                 else switchView('ended');
+            }
         };
 
         document.getElementById('save-exam-btn').onclick = async () => {
@@ -314,7 +347,7 @@
             if (!title || !url || !start || !dur) { alert("Sari details bharein!"); return; }
             const config = { title, pdfUrl: sanitizeDriveUrl(url), startTime: new Date(start).getTime(), duration: dur };
             if (dbConnected) {
-                try { await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'liveExam'), config); alert("Exam Live ho gaya hai!"); isAdmin = false; processExamState(); }
+                try { await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'liveExam'), config); alert("Exam Live ho gaya hai!"); isAdmin = false; document.getElementById('admin-toggle').textContent = "Admin Portal"; processExamState(); }
                 catch (e) { alert("Error: " + e.message); }
             } else { alert("Firebase connected nahi hai!"); }
         };
